@@ -41,6 +41,13 @@ This application is customized specifically for **open-canal MIRE headphone acou
 ### 6. Calculate Functionality
 * **Band Selection Brush**: Click the **`∫ calculate`** tool button and drag across any frequency range ($f_0 \rightarrow f_1$) on the graph canvas.
 * **Log-Weighted Difference**: Computes the log-frequency-weighted average decibel difference (or mean level) between selected channels/models across the chosen band (e.g. `Avg Diff: 1.45 dB` over `200 Hz – 1.0 kHz`).
+* **Precise Graph Bounding**: Calculate selection brush is structurally constrained between the top graph grid line (`pad.t + 10`) and bottom frame (`pad.t + H`), preventing overflow into the header.
+
+### 7. Adaptive Multi-Column Label Layout & Logarithmic Tilt Math
+* **Dynamic Multi-Column Label Stacking**: Automatically stacks active model curves into neat columns (up to 8 models in the bottom-left zone; 9+ models spilling into the top-left open whitespace zone). This allows for up to 16 models to be labeled nicely.
+* **Precise Text & Width Measurement**: Computes rendered text bounding box widths (`getBBox().width + 14px`) dynamically to prevent overlaps or awkward gaps, with automatic font-size downscaling (`12.5px` $\rightarrow$ `11px` $\rightarrow$ `10px`) for large model counts.
+* **SVG Layer Isolation**: Separates static curve labels (`g.labels-layer`) from interactive overlays (`g.tools-layer`), entirely eliminating label jumping when toggling Inspect or Calculate tools.
+* **Logarithmic Tilt Representation Note**: The $-1\text{ dB/Octave}$ tilt uses logarithmic scaling (`tilt * Math.log2(frequency / referenceFrequency)`). While a symmetric $\pm 5\text{ dB}$ split between 20 Hz and 20 kHz requires the reference pivot to be at the geometric mean ($f_{\text{geometric}} = \sqrt{20 \times 20,000} \approx 632.46\text{ Hz}$), the target curves anchor at the industry-standard **1 kHz (1000 Hz)** reference point, yielding $+5.64\text{ dB}$ at 20 Hz and $-4.32\text{ dB}$ at 20 kHz.
 
 ---
 

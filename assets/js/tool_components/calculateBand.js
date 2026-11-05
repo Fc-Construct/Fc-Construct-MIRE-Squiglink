@@ -10,16 +10,23 @@ function stopCalc() {
         calcBrushGroup.remove();
         calcBrushGroup = null;
     }
+    let tools = typeof getToolsLayer === 'function' ? getToolsLayer() : gr;
+    tools.selectAll(".calc-brush-group, .calc-badge").remove();
 }
 
 function initCalcBrush() {
     stopCalc();
+    let tools = typeof getToolsLayer === 'function' ? getToolsLayer() : gr;
     
+    // Grid plot area top is pad.t + 10 (20px), bottom is pad.t + H (310px)
+    let gridTopOffset = 10;
+    let gridHeight = H - gridTopOffset;
+
     calcBrush = d3.brushX()
-        .extent([[pad.l, pad.t], [pad.l + W, pad.t + H]])
+        .extent([[pad.l, 0], [pad.l + W, gridHeight]])
         .on("brush end", function() {
             let selection = d3.event.selection;
-            gr.selectAll(".calc-badge").remove();
+            calcBrushGroup.selectAll(".calc-badge").remove();
             
             if (!selection) return;
             
@@ -92,9 +99,9 @@ function initCalcBrush() {
             let formatFreq = f => f >= 1000 ? (f / 1000).toFixed(1) + " kHz" : Math.round(f) + " Hz";
             let fRangeText = formatFreq(f_values[idx0]) + " – " + formatFreq(f_values[idx1]) + " (" + octaves.toFixed(2) + " Oct)";
             
-            // Smaller, subtle pop-up note badge placed slightly lower (not pinned against the top)
+            // Badge placed cleanly inside the grid top area
             let badgeX = Math.min(pad.l + W - 170, Math.max(pad.l + 10, (x0 + x1) / 2 - 85));
-            let badgeY = pad.t + 45;
+            let badgeY = 25;
             
             let badge = calcBrushGroup.append("g")
                 .attr("class", "calc-badge")
@@ -120,8 +127,9 @@ function initCalcBrush() {
                 .text("Avg Diff: " + avgDiffText);
         });
         
-    calcBrushGroup = gr.append("g")
+    calcBrushGroup = tools.append("g")
         .attr("class", "calc-brush-group")
+        .attr("transform", "translate(0," + (pad.t + gridTopOffset) + ")")
         .call(calcBrush);
         
     // Thin solid neutral grey line around the selection box (removed dashed pattern)

@@ -855,8 +855,3 @@ tbody.curves > tr > td.button-saveSquig:after {
   border: none;
   cursor: pointer;
 }
-
-/* Pin graph line labels anchored in SVG coordinate space when anchored bottom-left */
-svg#fr-graph[data-labels-position="bottom-left"] g.lineLabel {
-    transform: none !important;
-}

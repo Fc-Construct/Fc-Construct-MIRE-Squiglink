@@ -617,11 +617,27 @@ let getFullName = p => p.dispBrand+" "+p.dispName,
 
 let labelButton = doc.select("#label"),
     labelsShown = false;
+function getLabelsLayer() {
+    let layer = gr.select("g.labels-layer");
+    if (layer.empty()) {
+        layer = gr.append("g").attr("class", "labels-layer");
+    }
+    return layer;
+}
+
+function getToolsLayer() {
+    let layer = gr.select("g.tools-layer");
+    if (layer.empty()) {
+        layer = gr.append("g").attr("class", "tools-layer");
+    }
+    return layer;
+}
+
 function setLabelButton(l) {
     labelButton.classed("selected", labelsShown = l);
 }
 function clearLabels() {
-    gr.selectAll(".lineLabel").remove();
+    getLabelsLayer().selectAll(".lineLabel").remove();
     setLabelButton(false);
 }
 
@@ -648,111 +664,201 @@ function drawLabels() {
         });
     }
 
-    gr.selectAll(".lineLabel").remove();
-    let g = gr.selectAll(".lineLabel").data(bcurves)
+    getLabelsLayer().selectAll(".lineLabel").remove();
+
+    let targetCurves = [], modelCurves = [];
+    bcurves.forEach((c, idx) => {
+        if (c.isTarget || (c.p && c.p.isTarget)) {
+            targetCurves.push({ curve: c, origIdx: idx });
+        } else {
+            modelCurves.push({ curve: c, origIdx: idx });
+        }
+    });
+
+    let nModels = modelCurves.length;
+    let fontSize = nModels <= 4 ? 12.5 : (nModels <= 8 ? 11 : 10);
+
+    let g = getLabelsLayer().selectAll(".lineLabel").data(bcurves)
         .join("g").attr("class","lineLabel").attr("opacity", 0);
     let t = g.append("text")
         .attrs({x:0, y:0, fill:c=>getTooltipColor(c)})
+        .style("font-size", fontSize + "px")
         .text(c=>c.id);
+
     g.datum(function(){return this.getBBox();});
     g.select("text").attrs(b=>({x:3-b.x, y:3-b.y}));
     g.insert("rect", "text")
         .attrs(b=>({x:2, y:2, width:b.width+2, height:b.height+2}));
-    let boxes = g.data(),
-        w = boxes.map(b=>b.width +6),
-        h = boxes.map(b=>b.height+6);
 
-    // Slice to fit in range
-    let r = x.domain().map(v => d3.bisectLeft(f_values, v));
-    rsl = a => a.slice(Math.max(r[0],0), r[1]+1);
-    let rf_values = rsl(f_values);
-    let v = curves.map(c => {
-        let o = getOffset(c.p);
-        return (c.multi?c.l:[c.l])
-            .map(l => rsl(baseline.fn(l).map(d=>d[1]+o)));
-    });
-    let tr;
+    let tr = new Array(bcurves.length);
 
-    if (curves.length === 1) {
-        let x0 = 50, y0 = 10,
-            sl = range_to_slice([0,w[0]], o=>x0+o),
-            e = d3.extent(d3.merge(v[0].map(sl)).map(y));
-        if (y0+h[0] >= e[0]) { y0 = Math.max(y0, e[1]); }
-        tr = [[x0,y0]];
-    } else {
-        let n = v.length;
-        let invd = (sc,d) => sc.invert(d)-sc.invert(0),
-            xr = x.range(),
-            yd = y.domain(),
-            wind = w => Math.ceil((w/(xr[1]-xr[0]))*rf_values.length),
-            mw = wind(d3.min(w));
-        let winReduce = (l,w,d0,fn) => {
-            l = l.slice();
-            for (let d=d0; d<w; ) {
-                let diff = Math.min(2*d,w) - d;
-                for (let i=0; i<l.length-diff; i++) {
-                    l[i] = fn(l[i], l[i+diff]);
+    if (labelsPosition === "bottom-left" || labelsPosition === "bottom-right") {
+        let isRight = (labelsPosition === "bottom-right");
+        let startX = isRight ? 500 : 40;
+        let startY = 296;
+
+        // Measure actual rendered text widths for each model label
+        let labelWidths = modelCurves.map(m => {
+            let node = g.nodes()[m.origIdx];
+            if (!node) return 100;
+            let bbox = node.getBBox();
+            return (bbox && bbox.width) ? bbox.width : 100;
+        });
+
+        // Helper function for laying out a group of model curves into dynamic columns
+        function layoutModelGroup(models, modelsWidths, groupStartX, basePointY, stepY, maxRows, isTopGroup) {
+            let n = models.length;
+            if (n === 0) return { colHeights: [0], colXPositions: [groupStartX] };
+
+            let numCols = Math.ceil(n / maxRows);
+            let colXPositions = [groupStartX];
+
+            for (let c = 0; c < numCols; c++) {
+                let startIdx = c * maxRows;
+                let endIdx = Math.min(startIdx + maxRows, n);
+                let maxColWidth = 0;
+                for (let i = startIdx; i < endIdx; i++) {
+                    if (modelsWidths[i] > maxColWidth) maxColWidth = modelsWidths[i];
                 }
-                d += diff;
+                if (c < numCols - 1) {
+                    // Dynamic X gap: max width of current column + 14px padding (no hardcoded floor)
+                    colXPositions.push(colXPositions[c] + Math.ceil(maxColWidth) + 14);
+                }
             }
-            l.length -= w-d0;
-            return l;
+
+            let colHeights = new Array(numCols).fill(0);
+            models.forEach((m, idx) => {
+                let col = Math.floor(idx / maxRows);
+                let row = idx % maxRows;
+                let xPos = colXPositions[col] || groupStartX;
+                let yPos = isTopGroup ? (basePointY + row * stepY) : (basePointY - row * stepY);
+                tr[m.origIdx] = [xPos, yPos];
+                if (row + 1 > colHeights[col]) colHeights[col] = row + 1;
+            });
+
+            return { colHeights, colXPositions };
         }
-        let rangeGetters = [Math.min, Math.max].map(f => {
-            let r = c => c.reduce((a,b)=>a.map((ai,i)=>f(ai,b[i])));
-            let t = v.map(c => winReduce(r(c), mw, 1, f));
-            return w => t.map(c => winReduce(c, w, mw, f));
+
+        // Split models into Bottom-Left (up to 8 models in 2 cols) and Top-Left whitespace (models 9+)
+        let bottomModels = modelCurves.slice(0, 8);
+        let topModels = modelCurves.slice(8);
+
+        let bottomWidths = labelWidths.slice(0, 8);
+        let topWidths = labelWidths.slice(8);
+
+        let nBottom = bottomModels.length;
+        let stepYBottom = nBottom <= 4 ? 20 : 16;
+        let resBottom = layoutModelGroup(bottomModels, bottomWidths, startX, startY, stepYBottom, 4, false);
+
+        // Position reference target header directly above bottom Col 0
+        let targetStartY = startY - (resBottom.colHeights[0] * stepYBottom) - 2;
+        targetCurves.forEach((tItem, idx) => {
+            let xPos = startX;
+            let yPos = targetStartY - idx * stepYBottom;
+            tr[tItem.origIdx] = [xPos, yPos];
         });
-        let top = 0; // Use top left if we can't find a spot
-        tr = v.map((_,j) => {
-            let we = wind(w[j]),
-                he = -invd(y,h[j]),
-                range = d3.transpose(rangeGetters.map(r => r(we))),
-                ds;
-            ds = range[j].map(function (r,ri) {
-                let le = r.length,
-                    s = [[-he,0],[0,he]][ri].map(o=>r.map(d=>d+o)),
-                    d = r.map(_=>1e10);
-                for (let k=0; k<n; k++) if (k!==j) {
-                    let t = range[k];
-                    for (let i=0; i<le; i++) {
-                        d[i] = Math.min(d[i], Math.max(s[0][i]-t[1][i],
-                                                       t[0][i]-s[1][i]));
-                    }
-                }
-                return d;
-            });
-            let sep = 0, pos = null;
-            ds.forEach(function (drow,k) {
-                for (let ii=0; ii<drow.length; ) {
-                    let i=ii, d=drow[i],
-                        rjk=range[j][k], m=rjk[i];
-                    while (ii++, ii<drow.length && rjk[ii]===m) {
-                        let di = drow[ii];
-                        if (di<d && di<1) break;
-                        d = Math.max(d,drow[ii]);
-                    }
-                    let clip = x => x/Math.sqrt(1+x*x);
-                    d = 4*clip(d/4) + clip((ii-i)/3);
-                    i = Math.floor((i+ii)/2);
-                    let dl = drow.length,
-                        r = i/dl;
-                    d *= Math.sqrt((0.8+r)*Math.sqrt(1-r));
-                    d *= clip(0.2+Math.max(0,(i>=15?drow[i-15]:0)+(i<dl-15?drow[i+15]:0)));
-                    if (d>sep) {
-                        let dy = range[j][k][i]+(k?he:0),
-                            yd = y.domain();
-                        if (yd[0]+he<=dy && dy<=yd[1]) { sep=d; pos=[i,dy]; }
-                    }
-                }
-            });
-            return pos ? [x(rf_values[pos[0]]), y(pos[1])]
-                       : [60, 20+30*top++];
+
+        // Layout Top-Left models (models 9+, using exact same layout logic and safe 22px top margin)
+        if (topModels.length > 0) {
+            let topStartY = 22;
+            layoutModelGroup(topModels, topWidths, startX, topStartY, 16, 4, true);
+        }
+    } else {
+        let boxes = g.data(),
+            w = boxes.map(b=>b.width +6),
+            h = boxes.map(b=>b.height+6);
+
+        let r = x.domain().map(v => d3.bisectLeft(f_values, v));
+        let rsl = a => a.slice(Math.max(r[0],0), r[1]+1);
+        let rf_values = rsl(f_values);
+        let v = curves.map(c => {
+            let o = getOffset(c.p);
+            return (c.multi?c.l:[c.l])
+                .map(l => rsl(baseline.fn(l).map(d=>d[1]+o)));
         });
+
+        if (curves.length === 1) {
+            let x0 = 50, y0 = 10,
+                sl = range_to_slice([0,w[0]], o=>x0+o),
+                e = d3.extent(d3.merge(v[0].map(sl)).map(y));
+            if (y0+h[0] >= e[0]) { y0 = Math.max(y0, e[1]); }
+            tr = [[x0,y0]];
+        } else {
+            let n = v.length;
+            let invd = (sc,d) => sc.invert(d)-sc.invert(0),
+                xr = x.range(),
+                yd = y.domain(),
+                wind = w => Math.ceil((w/(xr[1]-xr[0]))*rf_values.length),
+                mw = wind(d3.min(w));
+            let winReduce = (l,w,d0,fn) => {
+                l = l.slice();
+                for (let d=d0; d<w; ) {
+                    let diff = Math.min(2*d,w) - d;
+                    for (let i=0; i<l.length-diff; i++) {
+                        l[i] = fn(l[i], l[i+diff]);
+                    }
+                    d += diff;
+                }
+                l.length -= w-d0;
+                return l;
+            };
+            let rangeGetters = [Math.min, Math.max].map(f => {
+                let r = c => c.reduce((a,b)=>a.map((ai,i)=>f(ai,b[i])));
+                let t = v.map(c => winReduce(r(c), mw, 1, f));
+                return w => t.map(c => winReduce(c, w, mw, f));
+            });
+            let top = 0;
+            tr = v.map((_,j) => {
+                let we = wind(w[j]),
+                    he = -invd(y,h[j]),
+                    range = d3.transpose(rangeGetters.map(r => r(we))),
+                    ds;
+                ds = range[j].map(function (r,ri) {
+                    let le = r.length,
+                        s = [[-he,0],[0,he]][ri].map(o=>r.map(d=>d+o)),
+                        d = r.map(_=>1e10);
+                    for (let k=0; k<n; k++) if (k!==j) {
+                        let t = range[k];
+                        for (let i=0; i<le; i++) {
+                            d[i] = Math.min(d[i], Math.max(s[0][i]-t[1][i],
+                                                           t[0][i]-s[1][i]));
+                        }
+                    }
+                    return d;
+                });
+                let sep = 0, pos = null;
+                ds.forEach(function (drow,k) {
+                    for (let ii=0; ii<drow.length; ) {
+                        let i=ii, d=drow[i],
+                            rjk=range[j][k], m=rjk[i];
+                        while (ii++, ii<drow.length && rjk[ii]===m) {
+                            let di = drow[ii];
+                            if (di<d && di<1) break;
+                            d = Math.max(d,drow[ii]);
+                        }
+                        let clip = x => x/Math.sqrt(1+x*x);
+                        d = 4*clip(d/4) + clip((ii-i)/3);
+                        i = Math.floor((i+ii)/2);
+                        let dl = drow.length,
+                            r = i/dl;
+                        d *= Math.sqrt((0.8+r)*Math.sqrt(1-r));
+                        d *= clip(0.2+Math.max(0,(i>=15?drow[i-15]:0)+(i<dl-15?drow[i+15]:0)));
+                        if (d>sep) {
+                            let dy = range[j][k][i]+(k?he:0),
+                                yd = y.domain();
+                            if (yd[0]+he<=dy && dy<=yd[1]) { sep=d; pos=[i,dy]; }
+                        }
+                    }
+                });
+                return pos ? [x(rf_values[pos[0]]), y(pos[1])]
+                           : [60, 20+30*top++];
+            });
+        }
+        for (let j=curves.length; j<bcurves.length; j++) {
+            tr.push([pad.l+(W-w[j])/2, pad.t+H-h[j]+2]);
+        }
     }
-    for (let j=curves.length; j<bcurves.length; j++) {
-        tr.push([pad.l+(W-w[j])/2, pad.t+H-h[j]+2]);
-    }
+
     g.attr("transform",(_,i)=>"translate("+tr[i].join(",")+")");
     g.attr("opacity",null);
     setLabelButton(true);
@@ -2334,7 +2440,7 @@ function pathHL(c, m, imm) {
     }
 }
 function pathTooltip(c, m) {
-    let g = gr.selectAll(".lineLabel").data([c.id])
+    let g = getLabelsLayer().selectAll(".lineLabel").data([c.id])
         .join("g").attr("class","lineLabel");
     let t = g.append("text")
         .attrs({x:m[0], y:m[1]-6, fill:getTooltipColor(c)})
@@ -2352,34 +2458,41 @@ let graphInteract = imm => function () {
     if (!cs.length) return;
     let m = d3.mouse(this);
     if (interactInspect) {
-        let ind = fr_to_ind(x.invert(m[0])),
-            x1 = x(f_values[ind]),
+        let ind = fr_to_ind(x.invert(m[0]));
+        ind = Math.max(0, Math.min(ind, f_values.length - 1));
+        let x1 = x(f_values[ind]),
             x0 = ind>0 ? x(f_values[ind-1]) : x1,
             sel= m[0]-x0 < x1-m[0],
             xv = sel ? x0 : x1;
         ind -= sel;
+        ind = Math.max(0, Math.min(ind, f_values.length - 1));
         function init(e) {
             e.attr("class","inspector");
             e.append("line").attrs({x1:0,x2:0, y1:pad.t,y2:pad.t+H});
             e.append("text").attr("class","insp_dB").attr("x",2);
         }
-        let insp = gr.selectAll(".inspector").data([xv])
+        let insp = getToolsLayer().selectAll(".inspector").data([xv])
             .join(enter => enter.append("g").call(init))
             .attr("transform",xv=>"translate("+xv+",0)");
-        let dB = insp.select(".insp_dB").text(f_values[ind]+" Hz");
-        let cy = cs.map(c => [c, baseline.fn(c.l)[ind][1]+getOffset(c.p)]);
+        let rawFreq = f_values[ind] || 1000;
+        let fmtFreq = rawFreq >= 1000 ? (rawFreq / 1000).toFixed(1) + " kHz" : Math.round(rawFreq) + " Hz";
+        let dB = insp.select(".insp_dB").text(fmtFreq);
+        let cy = cs.map(c => {
+            let fn = baseline.fn(c.l);
+            let pt = fn && fn[ind];
+            let val = pt ? pt[1] + getOffset(c.p) : 0;
+            return [c, val];
+        });
         cy.sort((d,e) => d[1]-e[1]);
         function newTooltip(t) {
-            t.attr("class","inspectLabel")
-                .attr("fill",d=>getTooltipColor(d));
-            t.append("text").attr("x",2).text(d=>d.id);
+            t.attr("class","inspectLabel");
+            t.append("text").attrs({x:2, fill: d=>getTooltipColor(d)}).text(d=>d.id);
             t.append("g").selectAll().data([0,1])
                 .join("text")
-                .attr("x",-16)
-                .attr("text-anchor",i=>i?"start":"end");
+                .attrs({x:-16, fill: d=>getTooltipColor(d), "text-anchor": i=>i?"start":"end"});
             t.datum(function(){return this.getBBox();});
             t.insert("rect", "text")
-                .attrs(b=>({x:b.x-1, y:b.y-1, width:b.width+2, height:b.height+2}));
+                .attrs(b=>({x:b.x-2, y:b.y-1, width:b.width+4, height:b.height+2, fill:"var(--background-color-graph, #141821)", opacity:0.92}));
         }
         let tt = insp.selectAll(".inspectLabel").data(cy.map(d=>d[0]), d=>d.id)
             .join(enter => enter.insert("g","line").call(newTooltip));
@@ -2392,7 +2505,7 @@ let graphInteract = imm => function () {
             .filter((_,i)=>i===0)
             .nodes().map(n=>n.getBBox().x-2);
         tt.select("rect")
-            .attrs((b,i)=>({x:b.x+start[i]-1, width:b.width-start[i]+2}));
+            .attrs((b,i)=>({x:b.x+start[i]-2, width:b.width-start[i]+4, fill:"var(--background-color-graph, #141821)", opacity:0.92}));
         // Now compute heights
         let hm = d3.max(tt.data().map(b=>b.height)),
             hh = (y.invert(0)-y.invert(hm-1))/2,
@@ -2428,7 +2541,7 @@ let graphInteract = imm => function () {
   };
 };
 
-function stopInspect() { gr.selectAll(".inspector").remove(); }
+function stopInspect() { getToolsLayer().selectAll(".inspector").remove(); }
 
 doc.select("#inspector").on("click", function () {
     let btn = d3.select(this);
