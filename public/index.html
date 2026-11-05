@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fc-Construct's MIRE Squiglink</title>
+    <link rel="canonical" href="" />
+    <meta name="description" content="Fc-Construct's headphone database taken with open canal in-ear microphones" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+
+    <!-- Open Graph / Social Sharing -->
+    <meta property="og:title" content="Fc-Construct's MIRE Squiglink" />
+    <meta property="og:description" content="Fc-Construct's headphone database taken with open canal in-ear microphones" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="shortcut icon" type="image/png" href="assets/images/haruto.png" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;700&display=swap" rel="stylesheet" />
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Fc-Construct's MIRE Squiglink" />
+    <link rel="apple-touch-icon" href="assets/images/haruto.png" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <!-- Google Analytics 4: Insert G-XXXXXXXXXX snippet here if desired -->
+    <!--
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXXXXXX');
+    </script>
+    -->
+
+    <style type="text/css">
+      body { opacity: 0.0; transition: opacity 0.1s ease-in; }
+    </style>
+    <link rel="stylesheet" href="assets/css/extra.css" />
+    <link rel="stylesheet" href="assets/css/reinvented-color-wheel.min.css" />
+  </head>
+  <body>
+    <!-- Clean, minimal visualizer mount root -->
+    <div class="graphtool">
+      <noscript>Turn on Javascript to use the graph tool</noscript>
+    </div>
+
+    <!-- Core Libraries -->
+    <script src="assets/js/d3.v5.min.js"></script>
+    <script src="assets/js/d3-selection-multi.v1.min.js"></script>
+    <script src="assets/js/fuse.min.js"></script>
+    <script src="assets/js/reinvented-color-wheel.min.js"></script>
+
+    <!-- App Configuration -->
+    <script src="assets/js/config.js"></script>
+
+    <!-- Visualizer & Component Modules -->
+    <script src="assets/js/autoeq.js"></script>
+    <script src="assets/js/tool_components/equalizer.js"></script>
+    <script src="assets/js/tool_components/listAugment.js"></script>
+    <script src="assets/js/tool_components/saveSvgAsPng.js"></script>
+    <script src="assets/js/graphtool.js"></script>
+    <script src="assets/js/tool_components/smoothing.js"></script>
+    <script src="assets/js/tool_components/normalization.js"></script>
+    <script src="assets/js/tool_components/color.js"></script>
+    <script src="assets/js/tool_components/phoneTable.js"></script>
+    <script src="assets/js/tool_components/prefBounds.js"></script>
+    <script src="assets/js/tool_components/tutorial.js"></script>
+    <script src="assets/js/tool_components/theme.js"></script>
+    <script src="assets/js/tool_components/calculateBand.js"></script>
+    <script src="assets/js/tool_components/eqPanel.js"></script>
+    <script src="assets/js/tool_components/90inclusion.js"></script>
+    <script src="assets/js/squigsites.js"></script>
+
+    <!-- Optional Cross-Database Aggregator (controlled by graphAggregatorEnabled in config.js) -->
+    <script>
+      if (typeof graphAggregatorEnabled !== "undefined" && graphAggregatorEnabled) {
+        var aggScript = document.createElement("script");
+        aggScript.src = "https://graphaggregator.harutohiroki.com/graphAggregator.js";
+        aggScript.defer = true;
+        document.body.appendChild(aggScript);
+      }
+    </script>
+
+    <!-- Audio Utilities -->
+    <audio id="pinkNoiseAudio" preload="auto" loop>
+      <source src="assets/audio/pinknoise.wav" type="audio/wav" />
+    </audio>
+    <audio id="scarletFIRE" preload="auto" loop>
+      <source src="assets/audio/Scarlet_Fire-Otis_McDonald.mp3" type="audio/mp3" />
+    </audio>
+  </body>
+</html>

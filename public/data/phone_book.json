@@ -1,0 +1,219 @@
+[
+  {
+    "name": "AUNE",
+    "phones": [
+      {
+        "name": "AR3000",
+        "file": [
+          "AUNE AR3000",
+          "AUNE AR3000 G",
+          "AUNE AR3000 Vienna",
+          "AUNE AR3000 Vienna G"
+        ],
+        "suffix": [
+          "",
+          "Glasses",
+          "Vienna",
+          "Vienna Glasses"
+        ]
+      },
+      {
+        "name": "AR9000",
+        "file": [
+          "AUNE AR9000",
+          "AUNE AR9000 G"
+        ],
+        "suffix": [
+          "",
+          "Glasses"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Audio Technica",
+    "phones": [
+      {
+        "name": "ATH A900x",
+        "file": [
+          "Audio Technica ATH A900x",
+          "Audio Technica ATH A900x G"
+        ],
+        "suffix": [
+          "",
+          "Glasses"
+        ]
+      },
+      {
+        "name": "ATH R50x",
+        "file": [
+          "Audio Technica ATH R50x",
+          "Audio Technica ATH R50x G"
+        ],
+        "suffix": [
+          "",
+          "Glasses"
+        ]
+      },
+      {
+        "name": "ATH R70xa",
+        "file": [
+          "Audio Technica ATH R70xa",
+          "Audio Technica ATH R70xa G"
+        ],
+        "suffix": [
+          "",
+          "Glasses"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "HEDD",
+    "phones": [
+      {
+        "name": "D1",
+        "file": [
+          "HEDD D1",
+          "HEDD D1 G"
+        ],
+        "suffix": [
+          "",
+          "Glasses"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "HiFiMan",
+    "phones": [
+      {
+        "name": "HE6 Remastered Stock",
+        "file": [
+          "HiFiMan HE6 Remastered Stock",
+          "HiFiMan HE6 Remastered Stock G"
+        ],
+        "suffix": [
+          "",
+          "Glasses"
+        ]
+      },
+      {
+        "name": "HE6 Remastered Velour",
+        "file": [
+          "HiFiMan HE6 Remastered Velour",
+          "HiFiMan HE6 Remastered Velour G"
+        ],
+        "suffix": [
+          "",
+          "Glasses"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Philphone",
+    "phones": [
+      {
+        "name": "G",
+        "file": "Philphone G"
+      },
+      {
+        "name": "Philphone",
+        "file": "Philphone"
+      }
+    ]
+  },
+  {
+    "name": "Sennheiser",
+    "phones": [
+      {
+        "name": "HE1",
+        "file": [
+          "Sennheiser HE1",
+          "Sennheiser HE1 G"
+        ],
+        "suffix": [
+          "",
+          "Glasses"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Sony",
+    "phones": [
+      {
+        "name": "MDR-MV1",
+        "file": [
+          "Sony MDR-MV1",
+          "Sony MDR-MV1 G"
+        ],
+        "suffix": [
+          "",
+          "Glasses"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "ZMF",
+    "phones": [
+      {
+        "name": "Atrium Open",
+        "file": [
+          "ZMF Atrium Open",
+          "ZMF Atrium Open G"
+        ],
+        "suffix": [
+          "",
+          "Glasses"
+        ]
+      },
+      {
+        "name": "Auteur Classic",
+        "file": [
+          "ZMF Auteur Classic",
+          "ZMF Auteur Classic G"
+        ],
+        "suffix": [
+          "",
+          "Glasses"
+        ]
+      },
+      {
+        "name": "Bokeh Open",
+        "file": [
+          "ZMF Bokeh Open",
+          "ZMF Bokeh Open G"
+        ],
+        "suffix": [
+          "",
+          "Glasses"
+        ]
+      },
+      {
+        "name": "Caldera",
+        "file": [
+          "ZMF Caldera",
+          "ZMF Caldera G"
+        ],
+        "suffix": [
+          "",
+          "Glasses"
+        ]
+      },
+      {
+        "name": "Tessidera",
+        "file": [
+          "ZMF Tessidera",
+          "ZMF Tessidera G"
+        ],
+        "suffix": [
+          "",
+          "Glasses"
+        ]
+      }
+    ]
+  }
+]

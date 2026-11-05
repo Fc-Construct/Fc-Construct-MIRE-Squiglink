@@ -1,0 +1,38 @@
+name: Auto Update Phonebook
+
+# Trigger whenever files in data/ are committed or uploaded directly on GitHub
+on:
+  push:
+    paths:
+      - 'data/**'
+  workflow_dispatch:
+
+jobs:
+  update-phonebook:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Run update_phonebook.py
+        run: python3 update_phonebook.py
+
+      - name: Commit updated phone_book.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/phone_book.json public/data/phone_book.json
+          if git diff --staged --quiet; then
+            echo "No changes to phone_book.json"
+          else
+            git commit -m "Auto-update phone_book.json [skip ci]"
+            git push
+          fi
