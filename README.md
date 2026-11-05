@@ -49,6 +49,10 @@ This application is customized specifically for **open-canal MIRE headphone acou
 * **SVG Layer Isolation**: Separates static curve labels (`g.labels-layer`) from interactive overlays (`g.tools-layer`), entirely eliminating label jumping when toggling Inspect or Calculate tools.
 * **Logarithmic Tilt Representation Note**: The $-1\text{ dB/Octave}$ tilt uses logarithmic scaling (`tilt * Math.log2(frequency / referenceFrequency)`). While a symmetric $\pm 5\text{ dB}$ split between 20 Hz and 20 kHz requires the reference pivot to be at the geometric mean ($f_{\text{geometric}} = \sqrt{20 \times 20,000} \approx 632.46\text{ Hz}$), the target curves anchor at the industry-standard **1 kHz (1000 Hz)** reference point, yielding $+5.64\text{ dB}$ at 20 Hz and $-4.32\text{ dB}$ at 20 kHz.
 
+### 8. Inspect Tool Graph Box Bounding & Gaussian Halo
+* **Graph Box Bounding Math**: Computes the exact rendered SVG bounding box (`getBBox()`) of active inspection labels and clamps the container's horizontal position (`dx`) between graph padding boundaries (`pad.l` and `pad.l + W`). As the cursor line moves all the way to 20 Hz or 20 kHz, the inspection text block locks cleanly against the left or right edge without overflowing the graph box.
+* **Diffused Dark Gaussian Halo**: Uses a dark SVG drop-shadow filter (`#inspect-halo`) directly behind the text glyphs, providing high contrast and readability over graph curves and grid lines without rigid box outlines.
+
 ---
 
 ## 3. User Guide & REW Export Reminder

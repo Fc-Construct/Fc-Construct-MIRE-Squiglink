@@ -375,6 +375,14 @@ defs.append("filter").attr("id","blur").attr("filterUnits","userSpaceOnUse")
     .attrs({x:-W-4,y:-2,width:W+8,height:4})
     .append("feGaussianBlur").attr("in","SourceGraphic")
     .attr("stdDeviation", 0.8);
+
+let haloFilter = defs.append("filter")
+    .attr("id", "inspect-halo")
+    .attrs({ x: "-50%", y: "-50%", width: "200%", height: "200%" });
+haloFilter.append("feDropShadow")
+    .attrs({ dx: 0, dy: 0, stdDeviation: 4, "flood-color": "#000000", "flood-opacity": 1.0 });
+haloFilter.append("feDropShadow")
+    .attrs({ dx: 0, dy: 0, stdDeviation: 2, "flood-color": "#000000", "flood-opacity": 1.0 });
 let yAxis = d3.axisLeft(y).tickSize(W).tickSizeOuter(0).tickPadding(1);
 function fmtY(ya) {
     let d = y.domain(),
@@ -2466,66 +2474,124 @@ let graphInteract = imm => function () {
             xv = sel ? x0 : x1;
         ind -= sel;
         ind = Math.max(0, Math.min(ind, f_values.length - 1));
-        function init(e) {
-            e.attr("class","inspector");
-            e.append("line").attrs({x1:0,x2:0, y1:pad.t,y2:pad.t+H});
-            e.append("text").attr("class","insp_dB").attr("x",2);
+        function initInspector(e) {
+            e.attr("class", "inspector");
+            e.append("line").attrs({ x1: 0, x2: 0, y1: pad.t, y2: pad.t + H });
+            let c = e.append("g").attr("class", "inspectContent").style("filter", "url(#inspect-halo)");
+            c.append("text").attr("class", "insp_dB").attr("x", 2);
         }
+
         let insp = getToolsLayer().selectAll(".inspector").data([xv])
-            .join(enter => enter.append("g").call(init))
-            .attr("transform",xv=>"translate("+xv+",0)");
+            .join(enter => enter.append("g").call(initInspector))
+            .attr("transform", "translate(" + xv + ",0)");
+
+        let content = insp.select(".inspectContent");
+        if (content.empty()) {
+            insp.selectAll("*").remove();
+            initInspector(insp);
+            content = insp.select(".inspectContent");
+        }
+
+        // Reset transform to 0 before measuring
+        content.attr("transform", "translate(0,0)");
+
         let rawFreq = f_values[ind] || 1000;
         let fmtFreq = rawFreq >= 1000 ? (rawFreq / 1000).toFixed(1) + " kHz" : Math.round(rawFreq) + " Hz";
-        let dB = insp.select(".insp_dB").text(fmtFreq);
+        let dB = content.select(".insp_dB").text(fmtFreq);
+
         let cy = cs.map(c => {
             let fn = baseline.fn(c.l);
             let pt = fn && fn[ind];
             let val = pt ? pt[1] + getOffset(c.p) : 0;
             return [c, val];
         });
-        cy.sort((d,e) => d[1]-e[1]);
+        cy.sort((d, e) => d[1] - e[1]);
+
         function newTooltip(t) {
-            t.attr("class","inspectLabel");
-            t.append("text").attrs({x:2, fill: d=>getTooltipColor(d)}).text(d=>d.id);
-            t.append("g").selectAll().data([0,1])
-                .join("text")
-                .attrs({x:-16, fill: d=>getTooltipColor(d), "text-anchor": i=>i?"start":"end"});
-            t.datum(function(){return this.getBBox();});
-            t.insert("rect", "text")
-                .attrs(b=>({x:b.x-2, y:b.y-1, width:b.width+4, height:b.height+2, fill:"var(--background-color-graph, #141821)", opacity:0.92}));
+            t.attr("class", "inspectLabel");
+            t.append("text").attr("class", "insp_name").attrs({ x: 2 });
+            let valG = t.append("g").attr("class", "insp_val");
+            valG.append("text").attrs({ x: -16, "text-anchor": "end" });
+            valG.append("text").attrs({ x: -16, "text-anchor": "start" });
         }
-        let tt = insp.selectAll(".inspectLabel").data(cy.map(d=>d[0]), d=>d.id)
-            .join(enter => enter.insert("g","line").call(newTooltip));
-        let start = tt.select("g").datum((_,i) => cy[i][1])
-            .selectAll("text").data(d => {
-                let s=d<-0.05?"-":""; d=Math.abs(d)+0.05;
-                return [s+Math.floor(d)+".",Math.floor((d%1)*10)];
-            })
-            .text(t=>t)
-            .filter((_,i)=>i===0)
-            .nodes().map(n=>n.getBBox().x-2);
-        tt.select("rect")
-            .attrs((b,i)=>({x:b.x+start[i]-2, width:b.width-start[i]+4, fill:"var(--background-color-graph, #141821)", opacity:0.92}));
-        // Now compute heights
-        let hm = d3.max(tt.data().map(b=>b.height)),
-            hh = (y.invert(0)-y.invert(hm-1))/2,
+
+        let tt = content.selectAll(".inspectLabel").data(cy.map(d => d[0]), d => d.id)
+            .join(enter => enter.append("g").call(newTooltip));
+
+        // Update text colors and model name
+        tt.select(".insp_name")
+            .attr("fill", d => getTooltipColor(d))
+            .text(d => d.id);
+
+        tt.select(".insp_val").selectAll("text")
+            .attr("fill", function() {
+                let parentDatum = d3.select(this.parentNode.parentNode).datum();
+                return getTooltipColor(parentDatum);
+            });
+
+        // Update dB numbers
+        let start = [];
+        tt.each(function(d, i) {
+            let val = cy[i][1];
+            let s = val < -0.05 ? "-" : "";
+            let absVal = Math.abs(val) + 0.05;
+            let intPart = s + Math.floor(absVal) + ".";
+            let decPart = Math.floor((absVal % 1) * 10);
+            
+            let valTexts = d3.select(this).select(".insp_val").selectAll("text").nodes();
+            if (valTexts.length >= 2) {
+                d3.select(valTexts[0]).text(intPart);
+                d3.select(valTexts[1]).text(decPart);
+                let xOffset = valTexts[0].getBBox().x - 2;
+                start.push(xOffset);
+            } else {
+                start.push(-16);
+            }
+        });
+
+        // Compute Y stack heights
+        let heights = tt.nodes().map(n => {
+            let b = n.getBBox();
+            return b.height || 14;
+        });
+        let hm = d3.max(heights) || 14,
+            hh = (y.invert(0) - y.invert(hm - 1)) / 2,
             stack = [];
-        cy.map(d=>d[1]).forEach(function (h,i) {
+
+        cy.map(d => d[1]).forEach(function(h) {
             let n = 1;
-            let overlap = s => h/n - s.h/s.n <= hh*(s.n+n);
+            let overlap = s => h / n - s.h / s.n <= hh * (s.n + n);
             let l = stack.length;
             while (l && overlap(stack[--l])) {
                 let s = stack.pop();
                 h += s.h; n += s.n;
             }
-            stack.push({h:h, n:n});
+            stack.push({ h: h, n: n });
         });
-        let ch = d3.merge(stack.map((s,i) => {
-            let h = s.h/s.n - (s.n-1)*hh;
-            return d3.range(s.n).map(k => h+k*2*hh);
+
+        let ch = d3.merge(stack.map(s => {
+            let h = s.h / s.n - (s.n - 1) * hh;
+            return d3.range(s.n).map(k => h + k * 2 * hh);
         }));
-        tt.attr("transform",(_,i) => "translate(0,"+(y(ch[i])+5)+")");
-        dB.attr("y", y(ch[ch.length-1]+2*hh)+1);
+
+        tt.attr("transform", (_, i) => "translate(0," + (y(ch[i]) + 5) + ")");
+        dB.attr("y", y((ch.length ? ch[ch.length - 1] : 0) + 2 * hh) + 1);
+
+        // NOW measure complete rendered bounding box and clamp dx between pad.l and pad.l + W
+        let bbox = content.node() ? content.node().getBBox() : null;
+        let minX = pad.l;
+        let maxX = pad.l + W;
+        let dx = 0;
+        if (bbox && bbox.width > 0) {
+            let leftEdge = xv + bbox.x;
+            let rightEdge = xv + bbox.x + bbox.width;
+            if (leftEdge < minX) {
+                dx = minX - leftEdge;
+            } else if (rightEdge > maxX) {
+                dx = maxX - rightEdge;
+            }
+        }
+        content.attr("transform", "translate(" + dx + ",0)");
     } else {
         let d = 30 * W0 / gr.node().getBoundingClientRect().width,
             sl= range_to_slice([-1,1],s=>m[0]+d*s);
